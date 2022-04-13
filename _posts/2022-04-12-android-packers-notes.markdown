@@ -10,13 +10,14 @@ The next table is presented by the creators of Obfuscapk in it's whitepaper [7]:
 
 | Trivial        | Renaming     | Encryption            | Code               | Reflection         |
 |----------------|--------------|-----------------------|--------------------|--------------------|
-| RandomManifest | ClassRename  | LibEncryption         | ArithmethicBranch  | Reflection
-| Rebuild        | FieldRename  | ResStringEncryption   | Reorder            | AdvancedReflection
-| NewAlignment   | MethodRename | AssetEncryption       | CallIndirection    |
-| NewSignature   |              | ConstStringEncryption | DebugRemoval       |
-                                                          Goto               |
-                                                          MethodOverload     |
-                                                          Nop                |
+| RandomManifest | ClassRename  | LibEncryption         | ArithmethicBranch  | Reflection         |
+| Rebuild        | FieldRename  | ResStringEncryption   | Reorder            | AdvancedReflection |
+| NewAlignment   | MethodRename | AssetEncryption       | CallIndirection    |                    |
+| NewSignature   |              | ConstStringEncryption | DebugRemoval       |                    |
+|                |              |                       | Goto               |                    |
+|                |              |                       | MethodOverload     |                    |
+|                |              |                       | Nop                |                    |
+
 Bibliografia 
 [ 1 ] https://www.virusbulletin.com/uploads/pdf/conference/vb2014/VB2014-Yu.pdf
 [ 2 ] https://attack.mitre.org/techniques/T1540/
