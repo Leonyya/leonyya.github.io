@@ -1,11 +1,11 @@
 # Site settings
-title: Emerald | A simple Jekyll blog
-description: "A minimal blog template, build with Jekyll."
-url: "http://www.jacoporabolini.com/emerald"
+title: Leon
+description: "Binary Exploitation, Evasion, Packers, Covert comms."
+url: "http://leonyya.github.io"
 author:
-  name: "Jacopo Rabolini"
-  email: "hello@jacoporabolini.com"
-  url: "http://www.jacoporabolini.com"
+  name: "Luis Leon"
+  email: ""
+  url: "http://leonyya.github.io"
   twitter_username: theLeonyya
   github_username: Leonyya
 
