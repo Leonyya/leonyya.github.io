@@ -9,7 +9,7 @@
     <meta name="description" content="Binary Exploitation, Evasion, Packers, Covert comms.">
 
     <link rel="stylesheet" href="/css/main.css">
-    <link rel="canonical" href="http://leonyya.github.io/2022/android-execution-lifecycle.html">
+    <link rel="canonical" href="http://localhost:4000/2022/android-execution-lifecycle.html">
 </head>
 
     <body>
@@ -51,9 +51,7 @@
   </header>
 
   <article class="post-content">
-    <p>Los packers son herramientas escenciales para el crimeware, ya que componen espectro de métodos y técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria, antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART y Dalvik</p>
-
-<p>ART o Android Runtime es la maquina virtual <em>sucesor del Dalvik</em> que ejecuta el formato de ejecutable Dalvik (<em>Dex bytecode</em>), cada archivo <em>.java</em> fuente del APK es compilado a <em>.class</em> (<em>Java Bytecode</em>), posteriormente por cada uno de los archivos de clase se genera un archivo <em>.dex</em> especificamente el llamado “<em>classes.dex</em>”, que es el formato ejecutable de Dalvik, para despues colocarlo junto a <em>AndroidManifest.xml</em>, Assets, Resources y Libs. A continuación la estructura de un archivo apk despues de descomprimir el zipfile:</p>
+    <p>ART o Android Runtime es la maquina virtual <em>sucesor del Dalvik</em> que ejecuta el formato de ejecutable Dalvik (<em>Dex bytecode</em>), cada archivo <em>.java</em> fuente del APK es compilado a <em>.class</em> (<em>Java Bytecode</em>), posteriormente por cada uno de los archivos de clase se genera un archivo <em>.dex</em> especificamente el llamado “<em>classes.dex</em>”, que es el formato ejecutable de Dalvik, para despues colocarlo junto a <em>AndroidManifest.xml</em>, Assets, Resources y Libs. A continuación la estructura de un archivo apk despues de descomprimir el zipfile:</p>
 
 <figure class="highlight"><pre><code class="language-txt" data-lang="txt">|-- AndroidManifest.xml
 |-- META-INF // Signature Data

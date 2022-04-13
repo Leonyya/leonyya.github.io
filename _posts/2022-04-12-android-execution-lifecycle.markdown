@@ -5,8 +5,6 @@ date:   2022-04-12 12:58:29
 categories: android
 ---
 
-Los packers son herramientas escenciales para el crimeware, ya que componen espectro de métodos y técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria, antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART y Dalvik
-
 ART o Android Runtime es la maquina virtual *sucesor del Dalvik* que ejecuta el formato de ejecutable Dalvik (*Dex bytecode*), cada archivo *.java* fuente del APK es compilado a *.class* (*Java Bytecode*), posteriormente por cada uno de los archivos de clase se genera un archivo *.dex* especificamente el llamado "*classes.dex*", que es el formato ejecutable de Dalvik, para despues colocarlo junto a *AndroidManifest.xml*, Assets, Resources y Libs. A continuación la estructura de un archivo apk despues de descomprimir el zipfile: 
 
 {% highlight txt %}
