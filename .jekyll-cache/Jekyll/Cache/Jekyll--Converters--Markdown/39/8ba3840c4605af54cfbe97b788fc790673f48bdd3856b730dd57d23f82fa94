@@ -1,0 +1,118 @@
+I"\-<p>Los packers son herramientas escenciales para el crimeware, ya que componen espectro de métodos y técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria, antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART y Dalvik</p>
+
+<p>ART o Android Runtime es la maquina virtual <em>sucesor del Dalvik</em> que ejecuta el formato de ejecutable Dalvik (<em>Dex bytecode</em>), cada archivo <em>.java</em> fuente del APK es compilado a <em>.class</em> (<em>Java Bytecode</em>), posteriormente por cada uno de los archivos de clase se genera un archivo <em>.dex</em> especificamente el llamado “<em>classes.dex</em>”, que es el formato ejecutable de Dalvik, para despues colocarlo junto a <em>AndroidManifest.xml</em>, Assets, Resources y Libs. A continuación la estructura de un archivo apk despues de descomprimir el zipfile:</p>
+
+<figure class="highlight"><pre><code class="language-txt" data-lang="txt">|-- AndroidManifest.xml
+|-- META-INF // Signature Data
+|   |-- CERT.RSA
+|   |-- CERT.SF
+|   `-- MANIFEST.MF
+|-- classes.dex //  java byte code file generated after the compilation
+|-- res // resource files
+|   |-- drawable
+|   |   `-- icon.png
+|   `-- layout
+|       `-- main.xml
+`-- resources.arsc</code></pre></figure>
+
+<p>Dalvik y ART son compatibles, por lo que aplicaciones para Dalvik funcionan para ART, sin embargo algunas técnicas que funcionan en Dalvik no lo hacen en ART.</p>
+
+<p>ART introduce un compilador antes de tiempo <em>AOT</em>, precisamente al momento de instalar y optimizar un <em>.apk</em> ART traduce a su propio formato ejecutable usando la herramienta dex2oat ubicada en el mismo dispositivo, esta utilidad acepta un archivo <em>.dex</em> y genera un <em>.oat</em> (objeto enlazado ELF), el cual aún sigue conteniendo el formato Dex encapsulado en el interior del objeto.</p>
+
+<p><img src="/assets/apk-lifecycle.png" alt="Alt text" /></p>
+
+<figure class="highlight"><pre><code class="language-txt" data-lang="txt">| APK                                       | Odex container
+| | classes.dex     ====&gt; AOT ======&gt;       |  | Machine code
+| | | data section         ^                -----------------
+| | classes2.dex           |                | Vdex container
+| | | data section       Profile            |  | classes.cdex
+                                            |  | shared data section
+                                            |  | verification data</code></pre></figure>
+
+<p>Previo a ART por supuesto, existia unicamente la máquina virtual de Dalvik, sin embargo sustanciales cambios se hicieron debido a que el compilador justo a tiempo <em>JIT</em> es lento y demandante en recursos, la recolección de basura <em>GC_FOR_ALLOC</em> causaba <em>jittering</em>, es 32-bit y tenia varias debilidades en cuanto a la seguridad por diseño.</p>
+
+<p>Previo a la version 5.0  de android Dalvik usaba dexopt al momento de instalar un <em>.apk</em> y hacer la optimización y volcaba los objetos optimizados <em>.odex</em> en <em>/data/dalvik-cache</em>.</p>
+
+<p>El formato de un archivo DEX es</p>
+
+<p><img src="/assets/dexfile.PNG" alt="Alt text" width="250" /></p>
+
+<ol>
+  <li>Dex magic header (“dex\n” y version “035”)</li>
+  <li>Adler32 of header (offset+12) (checksum)</li>
+  <li>Signature SHA-1 hash of file (20 bytes)</li>
+  <li>Total file size</li>
+  <li>Header size (0x70)</li>
+  <li>Link size (Unused 0x0)</li>
+  <li>Link offset (Unused 0x0)</li>
+  <li>Map offset (Location of file map)</li>
+  <li>Number of String entries</li>
+  <li>Number of Type definition entries</li>
+  <li>Number of prototype (signature) entries</li>
+  <li>Number of field ID entires</li>
+  <li>Number of class definition entries</li>
+  <li>Data (map + res of file )</li>
+</ol>
+
+<p>Elemento del mapa, map_offset.</p>
+
+<p><img src="/assets/hexcode-dexfile.PNG" alt="Alt text" width="500" /></p>
+
+<p>Se puede consultar todo el formato del archivo Dex en la <a href="https://source.android.com/devices/tech/dalvik/dex-format">documentacion del sistema Android</a>, en la sección de Runtime estan también los detalles sobre el formato de las instrucciones del bytecode, mejoras, constantes, etcétera.</p>
+
+<p>Para comprender mejor el sistema de lanzamiento de apps, es muy necesario entender el contexto a bajo nivel donde ocurre todo el proceso, para ello he incluido este grafico que complementa los otros ciclos de vida presentados, y entender que cada componente del ciclo de vida en el kernel es un largo proceso por si mismo.</p>
+
+<p><img src="/assets/android-kernel-lifecycle.png" alt="Alt text" /></p>
+
+<p>El bootrom es un espacio de memoria no volátil de sólo escritura, normalmente una memoria flash embebida en el chip del procesador, esta, junto con el mismo CPU, el DSP y el modulo LTE (procesador señal digital de la banda celular) conforman el corazón del sistema físico de android.</p>
+
+<p>Cuando el procesador enciende ejecuta el bootrom, este dispara la ejecucion del bootloader cuyo trabajo es preparar la ejecución del Kernel, cargando los archivos necesarios en memoria y preparando el mismo código del kernel en memoria.</p>
+
+<p>El kernel inicia los drivers, monta el sistema de archivos raíz, prepara el caché, sistemas de protección de memoria <em>protected memory</em>, el planificador de tareas “<em>scheduler</em>” y dispara el proceso “<em>init</em>”</p>
+
+<p>Init es un proceso <em>root</em>, tiene la responsabilidad de montar directorios como /sys, /dev, /proc y correr init.rc que inicializa entre otras variedades los demonios del sistema como el Service Manager, Media Server entre otros, lo cual no lo diferencia mucho de otras distribuciones de Linux.</p>
+
+<p>Lo que sin embargo varía en el proceso <em>init</em> es que el mismo <a href="https://elinux.org/Android_Zygote_Startup">dispara un objeto identificado como <em>app_process</em> y llama la función <em>main()</em> del proceso <em>X-Zygote</em></a>.</p>
+
+<p>El proceso <em>app_process</em> se encarga de iniciar ART, mientras que la otra funcion enciende el Zygote, que permite enlazar codigo entre maquinas virtuales Dalvik/ART, a diferencia de la máquina virtual de Java, donde cada instancia tiene su propia copia de las librerias núcleo y los objetos del <em>heap</em>. Zygote inicia precargando todas las clases y recursos que una app podría llegar a necesitar en tiempo de ejecución en la memoria del sistema. Después escucha a conexiones en el socket por solicitudes de inicio de nuevas aplicaciones, cuando recibe una petición de inicialización se bifurca “<em>fork</em>” a sí mismo y lanza la nueva aplicación. Podría decirse que sirve como padre de todas las aplicaciones Android.</p>
+
+<p><em>(Cuando el ART identifica que un proceso no se esta ocupando y no será necesario se reclama el espacio de memoria asignado al mismo.)</em></p>
+
+<p>La característica de bifurcación viene con la implentación de la técnica de administración de recursos <a href="https://en.wikipedia.org/wiki/Copy-on-write"><em>copy-on-write</em></a> del Kernel de Linux, es decír que asigna las páginas del nuevo proceso a las del proceso padre y hace copias solo cuando el nuevo proceso escribe en una página de la memoria, todos los procesos iniciados desde Zygote utilizan su propia copia y una copia de las clases del sistema y los recursos que ya están cargados en la memoria del sistema.</p>
+
+<p>System Server es el primer proceso iniciado por Zygote, después de que inicializa se separa completamente del proceso que lo inició. Y dispara Activity Manager.</p>
+
+<p>Activity Manager por su parte es responsable del proceso de creación de nuevas tareas de <em>Activity</em>, mantener el ciclo de vida de Activity, y administrar la pila <em>stack</em> o los <em>stack frames</em>, al finalizar la inicialización también ejecuta un Intent para iniciar el Home Launcer.</p>
+
+<p>Después que el <em>.apk</em> en cuestión ha sido instalado en el sistema destino y Home Launcher ha inicializado este mismo está constantemente escuchando a eventos <em>onClick</em>, el evento “click” nos llevaria al disparo del ejecutador de Android, es decír a iniciar la aplicación.</p>
+
+<p>Android asigna un ID (UID) único a cada app, y todas corren sobre su propio proceso, recordemos pues que Android usa el kernel de Linux “<em>en los huesos</em>”, cada proceso tiene asociado su propia maquina virtual, cualquier proceso de ejecucion comienza con la primera maquina virtual haciendo una llamada al metodo principal del proceso orginal de Zygote el cual precarga todas las clases enlazadas y recursos a la memoria.</p>
+
+<p>Entre los recursos de Zygote carga, está el <em>Software Component Containers</em>, el cual una vez cargado aguarda la actividad,, servicios o proveedores de contenido de la aplicación y el mapeo de estas clases precargadas es enlazado o compartido cuando la aplicación es disparada, reduciendo así el tiempo de carga.</p>
+
+<p>Hasta este punto hemos pasado a abstracciones de alto nivel en la implementación, es decír, a partir de aquí el código está siendo ejecutado sobre Zygote, en el siguiente gráfico se adelanta el ciclo de creación de una actividad:</p>
+
+<p><img src="/assets/activity_creation_graph.png" alt="Alt text" /></p>
+
+<p>El punto de entrada de una actividad es Activity Thread, el cual se encarga de manejar la ejecución de la tarea principal en el proceso de la aplicación, maneja también <em>broadcasts</em>.</p>
+
+<p>La maquina virtual ubica el metodo <em>public static void main</em> y lo invoca en Activity Thread. Una vez hecho esto, procede a llamar al método <a href="https://developer.android.com/reference/android/os/Looper#prepareMainLooper()">Looper.prepareMainLooper</a>, luego establece el <a href="https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/app/ActivityThread.java#1969"><em>handler</em></a> con <em>thread.getHandler()</em></p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">ActivityThread</span> <span class="kd">extends</span> <span class="nc">ClientTransactionHandler</span> <span class="o">{</span>
+    <span class="kd">class</span> <span class="nc">H</span> <span class="kd">extends</span> <span class="nc">Handler</span> <span class="o">{</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="no">BIND_APPLICATION</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="o">}</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>Por último llama al método Looper.loop() en la tarea principal, esto inicia la ejecución de mensajes en la cola de mensajes.</p>
+
+<p>El handler en ActivityThread es responsable de manejar todos los mensajes recibidos en su método onHandleMessage. Reestablecer una actividad, pausarla, comenzarla, unir servicios, manejar recibidores, trimMemory entre otras cosas.</p>
+
+<p>Una vez en el entorno de ejecución de una <em>Activity</em> el ciclo lo manejan otros instrumentos, para navegar entre estados del ciclo de vida de la actividad la clase Activity provee un núcleo de seis llamadas:</p>
+
+<ul>
+  <li>onCreate, onStart, onResume, onPause, onStop, onDestroy</li>
+</ul>
+
+<p><img src="/assets/activity_lifecycle.png" alt="Alt text" /></p>
+:ET

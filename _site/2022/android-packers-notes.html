@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Notas sobre Android Packers (ARMv7 y x86)</title>
+    <meta name="description" content="Binary Exploitation, Evasion, Packers, Covert comms.">
+
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="canonical" href="http://leonyya.github.io/2022/android-packers-notes.html">
+</head>
+
+    <body>
+            <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Leon</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+            <div class="page content">
+                <div class="wrapper">
+                    <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Notas sobre Android Packers (ARMv7 y x86)</h1>
+    <p class="post-meta">Apr 12, 2022</p>
+  </header>
+
+  <article class="post-content">
+    <p>Las implementaciones de packers y ofuscadores de alto nivel tales como <a href="https://github.com/woxihuannisja/Bangcle">Bangcle</a>, ProGuard o DexGuard en su mayoria implementan tecnicas como cifrar las cadenas de texto, elegir identificadores aleatorios para metodos, y variables, volver a firmar el binario, cambiar aleatoriamente el archivo <em>AndroidManifest.xml</em> sin cambiar la estructura consiguiendo evadir <a href="https://www.youtube.com/watch?v=E_mN90TYnlg">el analisis N-grama</a> y pueden usar también <em>dynamic class loading (DexLoader classes)</em> para impedir el análisis estático.</p>
+
+<p>Existen por si mismos muchos metodos de ofuscacion que aprovechan el diseno del lenguaje y las interfaces con el runtime, exceptuando pues fallas de seguridad del ART, la siguiente tabla es presentada por los creadores de Obfuscapk en su <a href="https://www.sciencedirect.com/sdfe/reader/pii/S2352711019302791/pdf">whitepaper</a>, la cual enumera las tecnicas de ofuscacion que implementa dicha herramienta.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Trivial</th>
+      <th style="text-align: center">Renaming</th>
+      <th style="text-align: center">Encryption</th>
+      <th style="text-align: center">Code</th>
+      <th style="text-align: right">Reflection</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>RandomManifest</td>
+      <td style="text-align: center">ClassRename</td>
+      <td style="text-align: center">LibEncryption</td>
+      <td style="text-align: center">ArithmethicBranch</td>
+      <td style="text-align: right">Reflection</td>
+    </tr>
+    <tr>
+      <td>Rebuild</td>
+      <td style="text-align: center">FieldRename</td>
+      <td style="text-align: center">ResStringEncryption</td>
+      <td style="text-align: center">Reorder</td>
+      <td style="text-align: right">AdvancedReflection</td>
+    </tr>
+    <tr>
+      <td>NewAlignment</td>
+      <td style="text-align: center">MethodRename</td>
+      <td style="text-align: center">AssetEncryption</td>
+      <td style="text-align: center">CallIndirection</td>
+      <td style="text-align: right"> </td>
+    </tr>
+    <tr>
+      <td>NewSignature</td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">ConstStringEncryption</td>
+      <td style="text-align: center">DebugRemoval</td>
+      <td style="text-align: right"> </td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">Goto</td>
+      <td style="text-align: right"> </td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">MethodOverload</td>
+      <td style="text-align: right"> </td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">Nop</td>
+      <td style="text-align: right"> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Aqui se supone que va un salto de linea grande joer jaja</p>
+
+<p>Bibliografia</p>
+
+<p>[ 1 ] https://www.virusbulletin.com/uploads/pdf/conference/vb2014/VB2014-Yu.pdf</p>
+
+<p>[ 2 ] https://attack.mitre.org/techniques/T1540/</p>
+
+<p>[ 3 ] https://securelist.com/roaming-mantis-part-iv/90332/</p>
+
+<p>[ 4 ] https://cryptax.medium.com/a-native-packer-for-android-moqhao-6362a8412fe1</p>
+
+<p>[ 5 ] https://developer.android.com/reference/dalvik/system/DexClassLoader</p>
+
+<p>[ 6 ] https://docs.microsoft.com/en-us/dotnet/framework/reflection-and-codedom/reflection</p>
+
+<p>[ 7 ] https://www.sciencedirect.com/sdfe/reader/pii/S2352711019302791/pdf
+https://developer.android.com/topic/security/dex</p>
+
+<p>https://www.microsoft.com/security/blog/2020/10/08/sophisticated-new-android-malware-marks-the-latest-evolution-of-mobile-ransomware/</p>
+
+<p>https://www.researchgate.net/figure/Copying-procedure-when-the-CopyBinaryFile-method-is-invoked_fig20_308180878</p>
+
+<p>https://www.researchgate.net/figure/Packing-and-unpacking-mechanisms_fig31_308180878</p>
+
+<p>https://www.researchgate.net/figure/Structure-of-an-APK-file-packed-by-Bangcle_fig35_308180878</p>
+
+  </article>
+
+</div>
+
+                </div>
+            </div>
+            <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Leon</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col  footer-col-1">
+        <ul class="contact-list">
+          <li>Leon</li>
+          <li><a href="mailto:"></a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-2">
+        <ul class="social-media-list">
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-3">
+        <p class="text">Binary Exploitation, Evasion, Packers, Covert comms.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+    </body>
+</html>

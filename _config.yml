@@ -10,7 +10,7 @@ author:
   github_username: Leonyya
 
 # Build settings
-baseurl: / # Change this to your relative path (ex: /blog), or leave just a /
+baseurl: # Change this to your relative path (ex: /blog), or leave just a /
 markdown: kramdown
 source: .
 destination: ./_site
@@ -18,8 +18,12 @@ permalink: /:year/:title:output_ext
 #paginate: 8
 #paginate_path: /page:num/
 
-# Default values
-#defaults:
+#Default values
+defaults:
+  - scope:
+      path: "_assets"
+    values:
+      image: true
 #  -
 #    scope:
 #      path: ""
