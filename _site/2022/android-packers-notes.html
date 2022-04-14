@@ -51,7 +51,7 @@
   </header>
 
   <article class="post-content">
-    <p>Los packers son herramientas escenciales para el crimeware, ya que componen espectro de métodos y técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria, antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART y Dalvik</p>
+    <p>Los packers son herramientas escenciales para el crimeware, ya que componen espectro de métodos y técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria, antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART y Dalvik <a href="http://leonyya.github.io/2022/android-execution-lifecycle.html">al cual ya se le ha dedicado un articulo</a></p>
 
 <p>Sin embargo, si se pide al lector que se haga una distinción entre un <em>packer</em> y un ofuscador en los ejemplares modernos posiblemente el lector llegue a la conclusión de que no tienen diferencias, esto es porque los packers modernos implementan criterios de ofuscación, pero no debe eliminar el hecho de que son procesos diferentes.</p>
 
@@ -59,14 +59,238 @@
 
 <p>Las implementaciones de packers de alto nivel tales como <a href="https://github.com/woxihuannisja/Bangcle">Bangcle</a> o <a href="http://www.ijiami.cn/">Ijiami</a> en su mayoria implementan técnicas como cifrar las cadenas de texto, elegir identificadores aleatorios para métodos, y variables, volver a firmar el binario, cambiar aleatoriamente el archivo <em>AndroidManifest.xml</em> sin cambiar la estructura consiguiendo evadir <a href="https://www.youtube.com/watch?v=E_mN90TYnlg">el analisis N-grama</a> y pueden usar también <em>dynamic class loading</em> aprovechando la definición de la clase <a href="https://developer.android.com/reference/dalvik/system/DexClassLoader"><em>DexClassLoader</em></a> para impedir el análisis estático.</p>
 
-<p>La técnica de carga de clases dinámicas es una característica nativa de Android, y citando la misma documentación:</p>
+<p>En una <a href="https://www.virusbulletin.com/uploads/pdf/conference/vb2014/VB2014-Yu.pdf">investigacion realizada por Rowland Yu de Sophos</a> del 2014, se analizaron los <em>stubs</em> generados por tres herramientas apkprotect, <a href="https://dev.bangcle.com/">Bangcle</a>, y Ijiami.</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A class loader that loads classes from .jar and .apk files containing a 
-classes.dex entry. This can be used to execute code not installed as part
-of an application.
+<p>El archivo que se proceso en las tres herramientas tenia la siguiente estructura original:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>res/layout/acitivy_main.xml
+res/menu/main.xml
+AndroidManifest.xml
+resources.arsc
+res/drawable-hdpi/ic_launcher.png
+...
+classes.dex
+lib/armeabi/libhello-jni.so
+META-INF/MANIFEST.MF
+META-INF/CERT.SF
+META-INF/CERT.RSA
 </code></pre></div></div>
 
-<p>Es común, sobre todo en Bangcle observar técnicas <em>anti-debug</em> y <em>anti-tamper</em></p>
+<p>Mientras que, a la hora de desempaquetar el apkfile del <em>stub</em> generado, Ijiami devuelve la siguiente estructura:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Archivo</th>
+      <th>Descripcion</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>res/drawable-xhdpi/ic_launcher.png</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>…</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>resources.arsc</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>classes.dex</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>res/menu/main.xml</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>res/layout/acitivity_main.xml</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>lib/armeabi/libexec.so</td>
+      <td>ARM JNI libreria enlazada nativa</td>
+    </tr>
+    <tr>
+      <td>lib/armeabi/libhello-jni.so</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>lib/armeaby/libexecmain.so</td>
+      <td>ARM JNI load/unload nativa</td>
+    </tr>
+    <tr>
+      <td>META-INF/af.bin</td>
+      <td>Binario sin firma</td>
+    </tr>
+    <tr>
+      <td>META-INF/sdata.bin</td>
+      <td>Firma RSA</td>
+    </tr>
+    <tr>
+      <td>META-INF/signed.bin</td>
+      <td>Binario firmado</td>
+    </tr>
+    <tr>
+      <td>AndroidManifest.xml</td>
+      <td>Configurado para implementar</td>
+    </tr>
+    <tr>
+      <td>assets/ijiami.dat</td>
+      <td>APK original</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><em>(Esta tabla fue extraida del whitepaper)</em></p>
+
+<p>Podemos observar que el contenido del directorio <em>META-INF</em> ha cambiado, y hay dos nuevos objetos enlazados <em>libexec.so</em> y <em>libexecmain.so</em> y se ha creado el directorio <em>assets</em> con un <em>.dat</em>.</p>
+
+<p>El resultado del paquete generado por Bangcle devuelve la siguiente estructura:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Descripcion</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>assets/meta-data/manifest.mf</td>
+      <td>APK manifiesto</td>
+    </tr>
+    <tr>
+      <td>assets/meta-data/rsa.pub</td>
+      <td>Firma</td>
+    </tr>
+    <tr>
+      <td>assets/meta-data/rsa.sig</td>
+      <td>Firma real con cert</td>
+    </tr>
+    <tr>
+      <td>…</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>assets/bangcle_classes.jar</td>
+      <td>classes.dex original cifrado</td>
+    </tr>
+    <tr>
+      <td>assets/bangcleplugin/collector.dex</td>
+      <td>plugin de bangcle recolector de info</td>
+    </tr>
+    <tr>
+      <td>assets/bangcleplugin/container.dex</td>
+      <td>plugin de implementacion de bangcle</td>
+    </tr>
+    <tr>
+      <td>assets/bangcleplugin/dgc</td>
+      <td>relacionado al logfile</td>
+    </tr>
+    <tr>
+      <td>assets/com.*</td>
+      <td>ejecutable ARM y x86</td>
+    </tr>
+    <tr>
+      <td>assets/libsecexe.x86.so</td>
+      <td>x86 shared native library</td>
+    </tr>
+    <tr>
+      <td>assets/libsecmain.x86.so</td>
+      <td>x86 native main library</td>
+    </tr>
+    <tr>
+      <td>classes.dex</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>lib/armeabi/libhello-jni.so</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>lib/armeabi/libsecexe.so</td>
+      <td>ARM shared native library</td>
+    </tr>
+    <tr>
+      <td>lib/armeabi/libsecmain.so</td>
+      <td>ARM native main library</td>
+    </tr>
+    <tr>
+      <td>res/layout/activity_main.xml</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>res/menu/main.xml</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>resources.arsc</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>(<em>Esta tabla fue extraida del whitepaper</em>)</p>
+
+<p>A continuacion, la decompilacion del archivo <em>classes.dex</em> enlista las siguientes clases para cada uno de los ejemplares, a la izquierda el original, y los ultimos dos son Ijiami y Bangcle:</p>
+
+<p><img src="/assets/dex-structure.png" alt="alt" /></p>
+
+<p>En el caso de Ijiami, se asegura de especificar dentro de la etiqueta application en el AndroidManifest.xml la propiedad <a href="https://developer.android.com/guide/topics/manifest/application-element#nm">name</a> la cual referencia a una subclase de Application, cuando el proceso de la aplicacion arranca esta es instanciada primero. Esta edicion al AndroidManifest permite cargar el codigo del packer antes que el codigo del paquete original.</p>
+
+<p>Supongamos pues que el archivo original contenia la siguiente etiqueta:</p>
+
+<figure class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;application</span> <span class="na">android:allowBackup=</span><span class="s">"true"</span> <span class="na">android:debuggable=</span><span class="s">"true"</span> 
+<span class="na">android:icon=</span><span class="s">"@drawable/ic_launcher"</span> <span class="na">android:label=</span><span class="s">"@string/app_name"</span> 
+<span class="na">android:theme=</span><span class="s">"@style/AppTheme"</span><span class="nt">&gt;</span></code></pre></figure>
+
+<p>El mismo se convertiria entonces en:</p>
+
+<figure class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;application</span> <span class="na">android:allowBackup=</span><span class="s">"true"</span> <span class="na">android:debuggable=</span><span class="s">"true"</span> 
+<span class="na">android:icon=</span><span class="s">"@drawable/ic_launcher"</span> <span class="na">android:label=</span><span class="s">"@string/app_name"</span> 
+<span class="na">android:theme=</span><span class="s">"@style/AppTheme"</span> <span class="na">android:name=</span><span class="s">"com.shell.SuperApplication"</span><span class="nt">&gt;</span></code></pre></figure>
+
+<p>El punto de entrada de la aplicacion es SuperApplication, el cual hereda la clase Application, carga y ejecuta la clase NativeApplication.</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kn">package</span> <span class="nn">com.shell</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">android.app.Application</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">android.content.Context</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SuperApplication</span> <span class="kd">extends</span> <span class="nc">Application</span> <span class="o">{</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">attachBaseContext</span><span class="o">(</span><span class="nc">Context</span> <span class="n">paramContext</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">super</span><span class="o">.</span><span class="na">attachBaseContext</span><span class="o">(</span><span class="n">paramContext</span><span class="o">);</span>
+        <span class="nc">NativeApplication</span><span class="o">.</span><span class="na">load</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="s">"com.xxx.xxx"</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">NativeApplication</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="s">"android.app.Application"</span><span class="o">);</span>
+        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>La interfaz de NativeApplication por otro lado carga las librerias nativas que lleva todo el proceso de desempacar, cargar y ejecutar el codigo cifrado.</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kn">package</span> <span class="nn">com.shell</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">android.app.Application</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">NativeApplication</span> <span class="o">{</span>
+    <span class="kd">static</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">loadLibrary</span><span class="o">(</span><span class="s">"exec"</span><span class="o">);</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">loadLibrary</span><span class="o">(</span><span class="s">"execmain"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">native</span> <span class="kt">boolean</span> <span class="nf">load</span><span class="o">(</span><span class="nc">Application</span> <span class="n">paramApplication</span><span class="o">,</span> <span class="nc">String</span> <span class="n">paramstring</span><span class="o">);</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">native</span> <span class="kt">boolean</span> <span class="nf">run</span><span class="o">(</span><span class="nc">Application</span> <span class="n">paramApplication</span><span class="o">,</span> <span class="nc">String</span> <span class="n">paramstring</span><span class="o">);</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">native</span> <span class="kt">boolean</span> <span class="nf">runAll</span><span class="o">(</span><span class="nc">Application</span> <span class="n">paramApplication</span><span class="o">,</span> <span class="nc">String</span> <span class="n">paramstring</span><span class="o">);</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>En este caso en particular <em>lib/armeabi/libexec.so</em> provee las implementaciones para reconocer e interpretar el META-INF, para verificar la firma e integridad de los datos cifrados usando los ciphers RSA y AES, entonces decifra el <em>.dat</em> al classes.dex original para posteriormente ejecutar el codigo con <em>DexClassLoader</em>.</p>
+
+<p>Sin embargo una de las caracteristicas encontradas en Ijiami en esas fechas era la habilidad de cambiar el dex header original</p>
+
+<p>Sin embargo una de las caracteristicas encontradas en Ijiami en esas fechas era la habilidad de cambiar el dex header original. Dicha modificacion se realizaba al inicio del del archivo hasta 0x28, llenandolo de valores aleatorios. Como resultado el valor DEX_FILE_MAGIC ‘dex\n035\0’ se veia alterado y por tanto podia detener la traza de la depuracion en tiempo de ejecucion.</p>
 
 <p>Existen por si mismos muchos metodos de ofuscacion que aprovechan el diseno del lenguaje y las interfaces con el runtime, exceptuando pues fallas de seguridad del ART, la siguiente tabla es presentada por los creadores de Obfuscapk en su <a href="https://www.sciencedirect.com/sdfe/reader/pii/S2352711019302791/pdf">whitepaper</a>, la cual enumera las tecnicas de ofuscacion que implementa dicha herramienta.</p>
 
@@ -158,7 +382,8 @@ https://developer.android.com/topic/security/dex</p>
 
 <p>https://www.researchgate.net/figure/Packing-and-unpacking-mechanisms_fig31_308180878</p>
 
-<p>https://www.researchgate.net/figure/Structure-of-an-APK-file-packed-by-Bangcle_fig35_308180878</p>
+<p>https://www.researchgate.net/figure/Structure-of-an-APK-file-packed-by-Bangcle_fig35_308180878
+https://www.virusbulletin.com/uploads/pdf/conference/vb2014/VB2014-Yu.pdf</p>
 
   </article>
 
