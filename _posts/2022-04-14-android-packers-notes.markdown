@@ -5,19 +5,24 @@ date:   2022-04-12 12:58:29
 categories: android
 ---
 
-Los packers son herramientas escenciales para el crimeware, ya que componen espectro de métodos y técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria, antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART y Dalvik [al cual ya se le ha dedicado un articulo](http://leonyya.github.io/2022/android-execution-lifecycle.html)
+Los Packers son herramientas escenciales para el Crimeware, ya que componen un espectro de métodos, técnicas de evasión y ocultación de cualquier ejemplar, cuyas funciones van desde cambiar el hash de un binario, hasta empaquetar un binario cifrado con otro y ejecutarlo de forma dinámica en memoria. Antes de ahondar más en el tema, es necesario contextualizar con un repaso sobre el entorno de ejecución de ART (Android Runtime) y Dalvik [al cual ya se le ha dedicado un artículo anteriormente](http://leonyya.github.io/2022/android-execution-lifecycle.html)
 
-Sin embargo, si se pide al lector que se haga una distinción entre un *packer* y un ofuscador en los ejemplares modernos posiblemente el lector llegue a la conclusión de que no tienen diferencias, esto es porque los packers modernos implementan criterios de ofuscación, pero no debe eliminar el hecho de que son procesos diferentes.
+Sin embargo, si se pide al lector que se haga una distinción entre un *packer* y un ofuscador en los ejemplares modernos, posiblemente se llegue a la conclusión de que no tienen diferencias, ésto es porque los packers modernos implementan criterios de ofuscación, lo que lo hace parecido pero en esencia son procesos diferentes.
 
 Un ofuscador tomaría el archivo *apk* original, haría modificaciones sobre sus recursos, sus descripciones y el código *smali* y recompilaría el paquete nuevamente a *.apk* una vez hechas las transformaciones. El packer actúa de forma envolvente, suelen generar *stubs* que cargan con el código original encapsulado, así se le hagan modificaciones o no.  
 
-Las implementaciones de packers de alto nivel tales como [Bangcle](https://github.com/woxihuannisja/Bangcle) o [Ijiami](http://www.ijiami.cn/) en su mayoria implementan técnicas como cifrar las cadenas de texto, elegir identificadores aleatorios para métodos, y variables, volver a firmar el binario, cambiar aleatoriamente el archivo *AndroidManifest.xml* sin cambiar la estructura consiguiendo evadir [el analisis N-grama](https://www.youtube.com/watch?v=E_mN90TYnlg) y pueden usar también *dynamic class loading* aprovechando la definición de la clase [*DexClassLoader*](https://developer.android.com/reference/dalvik/system/DexClassLoader) para impedir el análisis estático.
+Las implementaciones de packers de alto nivel tales como [Bangcle](https://github.com/woxihuannisja/Bangcle) o [Ijiami](http://www.ijiami.cn/) en su mayoría implementan técnicas como: 
+- Cifrar las cadenas de texto. 
+- Elegir identificadores aleatorios para métodos y variables. 
+- Volver a firmar el binario. 
+- Cambiar aleatoriamente el archivo *AndroidManifest.xml* sin cambiar la estructura consiguiendo evadir [el análisis N-grama](https://www.youtube.com/watch?v=E_mN90TYnlg) 
+- Usar también *dynamic class loading* aprovechando la definición de la clase [*DexClassLoader*](https://developer.android.com/reference/dalvik/system/DexClassLoader) para impedir el análisis estático.
 
 
 
-En una [investigacion realizada por Rowland Yu de Sophos](https://www.virusbulletin.com/uploads/pdf/conference/vb2014/VB2014-Yu.pdf) del 2014, se analizaron los *stubs* generados por tres herramientas apkprotect, [Bangcle](https://dev.bangcle.com/), y Ijiami.
+En una [investigación realizada por Rowland Yu de Sophos](https://www.virusbulletin.com/uploads/pdf/conference/vb2014/VB2014-Yu.pdf) del 2014, se analizaron los *stubs* generados por tres herramientas apkprotect, [Bangcle](https://dev.bangcle.com/), y Ijiami.
 
-El archivo que se proceso en las tres herramientas tenia la siguiente estructura original:
+El archivo que se procesó en las tres herramientas tenía la siguiente estructura original:
 
     res/layout/acitivy_main.xml
     res/menu/main.xml
@@ -50,7 +55,7 @@ Mientras que, a la hora de desempaquetar el apkfile del *stub* generado, Ijiami 
 |AndroidManifest.xml                 |Configurado para implementar      |
 |assets/ijiami.dat                   |APK original                      |
 
-*(Esta tabla fue extraida del whitepaper)*
+*(Ésta tabla fue extraida del whitepaper)*
 
 Podemos observar que el contenido del directorio *META-INF* ha cambiado, y hay dos nuevos objetos enlazados *libexec.so* y *libexecmain.so* y se ha creado el directorio *assets* con un *.dat*.
 
@@ -77,22 +82,22 @@ El resultado del paquete generado por Bangcle devuelve la siguiente estructura:
 |res/menu/main.xml                                      |                                     |
 |resources.arsc                                         |                                     |
 
-(*Esta tabla fue extraida del whitepaper*)
+(*Ésta tabla fue extraida del whitepaper*)
 
-A continuacion, la decompilacion del archivo *classes.dex* enlista las siguientes clases para cada uno de los ejemplares, a la izquierda el original, y los ultimos dos son Ijiami y Bangcle:
+A continuación, la decompilación del archivo *classes.dex* enlista las siguientes clases para cada uno de los ejemplares, a la izquierda el original, y los ultimos dos son Ijiami y Bangcle:
 
 ![alt](/assets/dex-structure.png)
 
-En el caso de Ijiami, se asegura de especificar dentro de la etiqueta application en el AndroidManifest.xml la propiedad [name](https://developer.android.com/guide/topics/manifest/application-element#nm) la cual referencia a una subclase de Application, cuando el proceso de la aplicacion arranca esta es instanciada primero. Esta edicion al AndroidManifest permite cargar el codigo del packer antes que el codigo del paquete original.
+En el caso de Ijiami, se asegura de especificar dentro de la etiqueta Application en el AndroidManifest.xml la propiedad [name](https://developer.android.com/guide/topics/manifest/application-element#nm) la cual hace referencia a una subclase de Application, cuando el proceso de la aplicación arranca, ésta es instanciada primero. Ésta edición al AndroidManifest permite cargar el código del packer antes que el código del paquete original.
 
-Supongamos pues que el archivo original contenia la siguiente etiqueta:
+Supongamos pues que el archivo original contenía la siguiente etiqueta:
 {% highlight xml %}
 <application android:allowBackup="true" android:debuggable="true" 
 android:icon="@drawable/ic_launcher" android:label="@string/app_name" 
 android:theme="@style/AppTheme">
 {% endhighlight %}
 
-El mismo se convertiria entonces en:
+El mismo se convertiría entonces en:
 
 {% highlight xml %}
 <application android:allowBackup="true" android:debuggable="true" 
@@ -100,7 +105,7 @@ android:icon="@drawable/ic_launcher" android:label="@string/app_name"
 android:theme="@style/AppTheme" android:name="com.shell.SuperApplication">
 {% endhighlight %}
 
-El punto de entrada de la aplicacion es SuperApplication, el cual hereda la clase Application, carga y ejecuta la clase NativeApplication.
+El punto de entrada de la aplicación es SuperApplication, el cual hereda la clase Application, carga y ejecuta la clase NativeApplication.
 
 {% highlight java %}
 package com.shell;
@@ -119,7 +124,7 @@ public class SuperApplication extends Application {
 }
 {% endhighlight %}
 
-La interfaz de NativeApplication por otro lado carga las librerias nativas que lleva todo el proceso de desempacar, cargar y ejecutar el codigo cifrado.
+La interfaz de NativeApplication por otro lado carga las librerías nativas que lleva todo el proceso de desempacar, cargar y ejecutar el código cifrado.
 
 {% highlight java %}
 package com.shell;
@@ -136,16 +141,15 @@ public class NativeApplication {
 }
 {% endhighlight %}
 
-En este caso en particular *lib/armeabi/libexec.so* provee las implementaciones para reconocer e interpretar el META-INF, para verificar la firma e integridad de los datos cifrados usando los ciphers RSA y AES, entonces decifra el *.dat* al classes.dex original para posteriormente ejecutar el codigo con *DexClassLoader*.
+En éste caso en particular *lib/armeabi/libexec.so* provee las implementaciones para reconocer e interpretar el META-INF, de ésta forma verifica la firma e integridad de los datos cifrados usando los ciphers RSA y AES, entonces descifra el *.dat* al classes.dex original para posteriormente ejecutar el código con *DexClassLoader*.
 
-Sin embargo una de las caracteristicas encontradas en Ijiami en esas fechas era la habilidad de cambiar el dex header original
 
-Sin embargo una de las caracteristicas encontradas en Ijiami en esas fechas era la habilidad de cambiar el dex header original. Dicha modificacion se realizaba al inicio del del archivo hasta 0x28, llenandolo de valores aleatorios. Como resultado el valor DEX_FILE_MAGIC 'dex\n035\0' se veia alterado y por tanto podia detener la traza de la depuracion en tiempo de ejecucion.
-
+Sin embargo, una de las características encontradas en Ijiami en esas fechas, era la habilidad de cambiar el dex header original. Dicha modificación se realizaba al inicio del archivo hasta 0x28, llenándolo de valores aleatorios. Como resultado, el valor DEX_FILE_MAGIC 'dex\n035\0' se veía alterado y por lo tanto podía detener la traza de la depuración en tiempo de ejecución.
 
 
 
-Existen por si mismos muchos metodos de ofuscacion que aprovechan el diseno del lenguaje y las interfaces con el runtime, exceptuando pues fallas de seguridad del ART, la siguiente tabla es presentada por los creadores de Obfuscapk en su [whitepaper](https://www.sciencedirect.com/sdfe/reader/pii/S2352711019302791/pdf), la cual enumera las tecnicas de ofuscacion que implementa dicha herramienta.
+
+Existen por sí mismos muchos métodos de ofuscación que aprovechan el diseño del lenguaje y las interfaces con el runtime, exceptuando fallas de seguridad del ART, la siguiente tabla es presentada por los creadores de Obfuscapk en su [whitepaper](https://www.sciencedirect.com/sdfe/reader/pii/S2352711019302791/pdf), la cual enumera las técnicas de ofuscación que implementa dicha herramienta.
 
 
 | Trivial        | Renaming     | Encryption            | Code               | Reflection         |
@@ -162,7 +166,7 @@ Existen por si mismos muchos metodos de ofuscacion que aprovechan el diseno del 
 
 
 
-Aqui se supone que va un salto de linea grande joer jaja
+Aqui se supone que va un salto de linea grande joer jaja (:v)
 
 Bibliografia
 
